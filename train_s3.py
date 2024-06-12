@@ -12,7 +12,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import CosineAnnealingLR
-import  lightning.pytorch as pl
+import lightning.pytorch as pl
 from lightning.fabric import Fabric
 from lightning.fabric.loggers import CSVLogger
 ## Model
@@ -22,13 +22,15 @@ import segmentation_models_pytorch as smp
 from dataset import ImageDataSet_Train, ImageDataSet_Valid, ImageDataSet_Semi2
 from transforms import get_train_augmentation
 from transforms.RandAugment import RandAugment_best_2aug
+
 ## Initial
 ssl._create_default_https_context = ssl._create_unverified_context
+
 
 def create_model(norm=True, ema=False):
     # net = smp.Unet("timm-resnest101e", in_channels=1, classes=1)
     # timm-resnest101e efficientnet-b5 efficientnet-b6
-    net = net_factory('unet',1,1)  # 'unet','enet','pnet'
+    net = net_factory('unet', 1, 1)  # 'unet','enet','pnet'
     if norm:
         model = kaiming_normal_init_weight(net)
     else:
@@ -38,15 +40,17 @@ def create_model(norm=True, ema=False):
             param.detach_()
     return model
 
-def save_model(fabric,model, best_target, current_target, save_dir, epoch, best_epoch):
+
+def save_model(fabric, model, best_target, current_target, save_dir, epoch, best_epoch):
     if current_target > best_target:
-        model_path = os.path.join(save_dir,'best.pt')
+        model_path = os.path.join(save_dir, 'best.pt')
         torch.save(model.state_dict(), model_path)
         best_target = current_target
         best_epoch = epoch
         return best_target, best_epoch
     else:
         return best_target, best_epoch
+
 
 class Adaptive_threshold(object):
     def __init__(self, alpha=0.9):
@@ -55,7 +59,7 @@ class Adaptive_threshold(object):
         self.loss2 = None
         self.confidence = 0.9
         self.warmup = 0
-        
+
     def __call__(self, loss):
         if self.loss is None:
             if self.warmup > 5:
@@ -75,13 +79,14 @@ class Adaptive_threshold(object):
         if self.confidence < 0.6:
             self.confidence = 0.6
 
+
 def train(fabric, model, train_loader, loss, optimizer, scheduler, train_history, epoch, ada_th):
     model_t, model_s = model
     optimizer_t, optimizer_s = optimizer
     scheduler_t, scheduler_s = scheduler
     train_loader_l, train_loader_u = train_loader
     loss_l, loss_u = loss
-    
+
     model_t.train()
     model_s.train()
     su_loss = 0
@@ -126,7 +131,7 @@ def train(fabric, model, train_loader, loss, optimizer, scheduler, train_history
             # ------------------------------------
             un_loss = un_loss + (cons_loss.detach().clone().item() / un_batch_size)
             # ====================================
-            t_loss = loss_su + cons_weight * cons_loss 
+            t_loss = loss_su + cons_weight * cons_loss
             fabric.backward(t_loss)
             optimizer_t.step()
             # ====================================
@@ -150,6 +155,7 @@ def train(fabric, model, train_loader, loss, optimizer, scheduler, train_history
     train_history["train"]["loss"].append(su_loss + un_loss)
     return train_history
 
+
 def valid(fabric, model, valid_loader, train_history):
     model.eval()
     v_SE = 0.0
@@ -158,7 +164,7 @@ def valid(fabric, model, valid_loader, train_history):
     v_F1 = 0.0
     with torch.no_grad():
         with tqdm(total=len(valid_loader), desc="valid ", unit="img",
-                    bar_format='{l_bar}{bar:50}{r_bar}{bar:-10b}') as pbar:
+                  bar_format='{l_bar}{bar:50}{r_bar}{bar:-10b}') as pbar:
             for imgs, labels in valid_loader:
                 imgs, labels = imgs.float(), labels.float()
                 preds = model(imgs)
@@ -170,7 +176,7 @@ def valid(fabric, model, valid_loader, train_history):
                 v_SP = v_SP + SP
                 v_PR = v_PR + PR
                 v_F1 = v_F1 + F1
-                pbar.update(imgs.shape[0]) 
+                pbar.update(imgs.shape[0])
     train_history["valid"]["SE"].append(v_SE / len(valid_loader))
     train_history["valid"]["SP"].append(v_SP / len(valid_loader))
     train_history["valid"]["PR"].append(v_PR / len(valid_loader))
@@ -183,14 +189,15 @@ def valid(fabric, model, valid_loader, train_history):
     fabric.log_dict(logs)
     return train_history, (v_F1 / len(valid_loader))
 
+
 def main(args):
     moving_dot_product = torch.empty(1)
     limit = 3.0 ** (0.5)  # 3 = 6 / (f_in + f_out)
     nn.init.uniform_(moving_dot_product, -limit, limit)
     train_history = createTrainHistory(["loss", "SE", "SP", "PR", "F1"])
     csv_logger = CSVLogger(root_dir=args.s_dir)
-    fabric = Fabric(accelerator="gpu", 
-                    device = torch.device("cuda"),
+    fabric = Fabric(accelerator="gpu",
+                    device=torch.device("cuda"),
                     precision="16-mixed",
                     loggers=csv_logger)
     fabric.launch()
@@ -201,8 +208,8 @@ def main(args):
     model_t = create_model()
     model_s = create_model()
     print("=" * 50)
-    print("teacher model parameters: {:.2f}M".format(sum(p.numel() for p in model_t.parameters())/1e6))
-    print("student model parameters: {:.2f}M".format(sum(p.numel() for p in model_s.parameters())/1e6))
+    print("teacher model parameters: {:.2f}M".format(sum(p.numel() for p in model_t.parameters()) / 1e6))
+    print("student model parameters: {:.2f}M".format(sum(p.numel() for p in model_s.parameters()) / 1e6))
     print("=" * 50)
     loss = DiceBCELoss()
     loss_un = nn.MSELoss()
@@ -236,21 +243,21 @@ def main(args):
         size=args.size,
         transform=RandAugment_best_2aug(1, 20),
         transform_weak=weak_aug()
-        )
+    )
     train_loader = DataLoader(
         dataset=train_dataset,
         batch_size=args.bl,
         num_workers=args.c,
         shuffle=True,
         pin_memory=True,
-        drop_last=True,)
+        drop_last=True, )
     train_loader_u = DataLoader(
         dataset=train_dataset_u,
         batch_size=args.bu,
         shuffle=True,
         num_workers=args.c,
         pin_memory=True,
-        drop_last=True,)
+        drop_last=True, )
     valid_loader = DataLoader(
         dataset=valid_dataset,
         batch_size=1,
@@ -260,25 +267,26 @@ def main(args):
     train_loader = fabric.setup_dataloaders(train_loader)
     train_loader_u = fabric.setup_dataloaders(train_loader_u)
     valid_loader = fabric.setup_dataloaders(valid_loader)
-    
+
     best_target = 0
     best_epoch = 0
     ada_th = Adaptive_threshold()
-    # vis_pl= visualize_pseudol_label(device=fabric.device, 
-    #                                 threshold=0.5, 
+    # vis_pl= visualize_pseudol_label(device=fabric.device,
+    #                                 threshold=0.5,
     #                                 name_save='test_s3_400_8952_9',
     #                                 name_img='CVAI-0107_LAD_RAO12_CRA16_32.png',
     #                                 path_img=args.i_dir,
     #                                 path_gt=args.l_dir,
     #                                 path_dir=args.s_dir)
     for epoch in range(args.e):
-        train_history = train(fabric, [model_t, model_s], 
-                              [train_loader, train_loader_u], 
-                              [loss, loss_un], 
-                              [optimizer_t, optimizer_s], 
+        train_history = train(fabric, [model_t, model_s],
+                              [train_loader, train_loader_u],
+                              [loss, loss_un],
+                              [optimizer_t, optimizer_s],
                               [scheduler_t, scheduler_s], train_history, epoch, ada_th)
         train_history, current_target = valid(fabric, model_s, valid_loader, train_history)
-        best_target, best_epoch = save_model(fabric, model_s, best_target, current_target, args.s_dir, epoch, best_epoch)
+        best_target, best_epoch = save_model(fabric, model_s, best_target, current_target, args.s_dir, epoch,
+                                             best_epoch)
         print(f"Epoch {epoch + 1} "
               f"loss : {train_history['train']['loss'][epoch]:2.5f}, "
               f"valid_PR : {train_history['valid']['PR'][epoch]:2.5f}, "
@@ -286,20 +294,21 @@ def main(args):
               f"valid_SP : {train_history['valid']['SP'][epoch]:2.5f}, "
               f"valid_F1 : {train_history['valid']['F1'][epoch]:2.5f}")
         # print("Best F1/DSC {} on Epoch {}".format(str(best_target),str(best_epoch)))
-        print("Best F1/DSC {} on Epoch {} / th {}".format(str(best_target),str(best_epoch), str(ada_th.confidence)))
+        print("Best F1/DSC {} on Epoch {} / th {}".format(str(best_target), str(best_epoch), str(ada_th.confidence)))
     #     vis_pl(model_t, model_s)
     # vis_pl.save_result()
     fabric.logger.save()
-    saveDict(args.s_dir/'train_history.pickle', train_history)
+    saveDict(args.s_dir / 'train_history.pickle', train_history)
     from test import test
     test(fabric, model_s, valid_loader, args.s_dir)
     return
 
+
 if __name__ == "__main__":
     pl.seed_everything(1234)
     parser = ArgumentParser()
-    parser.add_argument("--bl", "--batch_size_labeled", default=10, type=int)
-    parser.add_argument("--bu", "--batch_size_un", default=40, type=int)
+    parser.add_argument("--bl", "--batch_size_labeled", default=4, type=int)
+    parser.add_argument("--bu", "--batch_size_un", default=10, type=int)
     parser.add_argument("--e", "--Epoch", default=300, type=int)
     parser.add_argument("--c", "--cpu_core", default=4, type=int)
     parser.add_argument("--g", "--gpu", default=2, type=int)
@@ -308,13 +317,17 @@ if __name__ == "__main__":
     Dataset split to train and valid : 400/100
     Image resize to (512,512)
     """
-    parser.add_argument("--size", "--image_size", default=(512,512))
+    parser.add_argument("--size", "--image_size", default=(512, 512))
     parser.add_argument("--i_dir", "--img_dir", default=Path("/mnt/workspace/CAG/imgs2"))
     parser.add_argument("--l_dir", "--label_dir", default=Path("/mnt/workspace/CAG/labels2"))
-    parser.add_argument("--s_dir", "--save_dir", default=Path("./logs/CAG/F2/400_8952/S3"))
-    parser.add_argument("--t_txt_path", "--train_txt_path", default="./data/cag/labeled_400_2.txt") # labeled_400_2 labeled_771_2
-    parser.add_argument("--t_un_txt_path", "--train_un_txt_path", default="./data/cag/unlabeled_all.txt") # unlabeled_all un_500
-    parser.add_argument("--v_txt_path", "--valid_txt_path", default="./data/cag/valid_2.txt")
+    parser.add_argument("--s_dir", "--save_dir",
+                        default=Path("/mnt/workspace/semi_supervised_CAG/logs/CAG/F2/400_8952/S3"))
+    parser.add_argument("--t_txt_path", "--train_txt_path",
+                        default="/mnt/workspace/semi_supervised_CAG/data/cag/labeled_400_2.txt")  # labeled_400_2 labeled_771_2
+    parser.add_argument("--t_un_txt_path", "--train_un_txt_path",
+                        default="/mnt/workspace/semi_supervised_CAG/data/cag/unlabeled_all.txt")  # unlabeled_all un_500
+    parser.add_argument("--v_txt_path", "--valid_txt_path",
+                        default="/mnt/workspace/semi_supervised_CAG/data/cag/valid_2.txt")
     """
     STARE Dataset Labeled 20 and Unlabeled 377
     Dataset split to train and valid : 18/2
@@ -337,12 +350,12 @@ if __name__ == "__main__":
     # parser.add_argument("--l_dir", "--label_dir", default=Path("./data/DCA1/gt"))
     # parser.add_argument("--s_dir", "--save_dir", default=Path("./logs/DCA1/5_95/S3"))
     # parser.add_argument("--t_txt_path", "--train_txt_path", default="./data/DCA1/DCA1_train_l_5.txt") # DCA1_train_l_5 DCA1_train_l_10
-    # parser.add_argument("--t_un_txt_path", "--train_un_txt_path", default="./data/DCA1/DCA1_train_u_95.txt") # DCA1_train_u_95 DCA1_train_u_90 
+    # parser.add_argument("--t_un_txt_path", "--train_un_txt_path", default="./data/DCA1/DCA1_train_u_95.txt") # DCA1_train_u_95 DCA1_train_u_90
     # parser.add_argument("--v_txt_path", "--valid_txt_path", default="./data/DCA1/DCA1_val_34.txt")
-    
+
     parser.add_argument("--lr", "--learning_rate", default=1e-3)
     args = parser.parse_args()
-    
+
     begin_time = datetime.now()
     main(args)
     finish_time = datetime.now()
