@@ -7,10 +7,12 @@ import ssl
 from utils import *
 from itertools import cycle
 from datetime import datetime
+
 ## DeepLearning
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+import torch.optim as optim
 from torch.optim.lr_scheduler import CosineAnnealingLR
 import  lightning.pytorch as pl
 from lightning.fabric import Fabric
@@ -18,6 +20,8 @@ from lightning.fabric.loggers import CSVLogger
 ## Model
 from networks import net_factory
 import segmentation_models_pytorch as smp
+from vit_networks.vit_seg_modeling import VisionTransformer as ViT_seg
+from vit_networks.vit_seg_modeling import CONFIGS as CONFIGS_ViT_seg
 ## Data & Augmentation
 from dataset import ImageDataSet_Train, ImageDataSet_Valid
 from transforms import get_train_augmentation, get_train_simple
@@ -25,15 +29,17 @@ from transforms import get_train_augmentation, get_train_simple
 ssl._create_default_https_context = ssl._create_unverified_context
 
 def create_model(norm=False, ema=False, freez=False, backbone=False):
-    net = smp.Unet("timm-resnest101e", in_channels=1, classes=1)
-    # efficientnet-b6 tu-efficientnetv2_l tu-tf_efficientnetv2_l mobileone_s1
-    # timm-resnest101e
-    # net = net_factory('unet',1,1) # fr_unet unext
+    config_vit = CONFIGS_ViT_seg['R50-ViT-B_16']
+    config_vit.n_classes = 1
+    config_vit.n_skip = 3
+    config_vit.patches.grid = (
+    int(512 / 16), int(512 / 16))
+    net = ViT_seg(config_vit, img_size=512, num_classes=config_vit.n_classes).cuda()
+    net.load_from(weights=np.load(config_vit.pretrained_path))
     # 'unet','enet','pnet' efficient_unet
     if backbone:
         pass
         # net.load_state_dict(torch.load('./logs/CAG/supervised/F2/400/efficientnet_b3_none_norm/best.pt'))
-        # net.initialize(net.decoder)
     if freez:
         for param in net.encoder.parameters():
             param.requires_grad=False
@@ -44,7 +50,8 @@ def create_model(norm=False, ema=False, freez=False, backbone=False):
     if ema:
         for param in model.parameters():
             param.detach_()
-    return model
+
+    return net
 
 def save_model(fabric,model, best_target, current_target, save_dir, epoch, best_epoch):
     if current_target > best_target:
@@ -169,7 +176,9 @@ def main(args):
     print("model parameters: {:.2f}M".format(sum(p.numel() for p in model.parameters())/1e6))
     print("=" * 50)
     loss = DiceBCELoss()
-    optimizer = torch.optim.AdamW(params=filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr)
+    # optimizer = torch.optim.AdamW(params=filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr)
+    optimizer = optim.SGD(params=filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, momentum=0.9,
+                          weight_decay=1e-5)
     scheduler = CosineAnnealingLR(optimizer=optimizer,T_max=args.e)
     # scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_training_steps=600)
     model, optimizer = fabric.setup(model, optimizer)
@@ -201,6 +210,7 @@ def main(args):
         num_workers=args.c,
         shuffle=False,
         pin_memory=True)
+
     train_loader = fabric.setup_dataloaders(train_loader)
     valid_loader = fabric.setup_dataloaders(valid_loader)
     
@@ -228,7 +238,7 @@ if __name__ == "__main__":
     pl.seed_everything(1234)
     parser = ArgumentParser()
     parser.add_argument("--bl", "--batch_size_labeled", default=40, type=int)
-    parser.add_argument("--e", "--Epoch", default=200, type=int)
+    parser.add_argument("--e", "--Epoch", default=500, type=int)
     parser.add_argument("--c", "--cpu_core", default=4, type=int)
     parser.add_argument("--g", "--gpu", default=0, type=int)
     """
@@ -270,13 +280,16 @@ if __name__ == "__main__":
     Dataset split to train and valid : 400/100
     Image resize to (512,512)
     """
-    parser.add_argument("--size", "--image_size", default=(512,512))
+    parser.add_argument("--size", "--image_size", default=(512, 512))
     parser.add_argument("--i_dir", "--img_dir", default=Path("/mnt/workspace/CAG/imgs2"))
     parser.add_argument("--l_dir", "--label_dir", default=Path("/mnt/workspace/CAG/labels2"))
-    parser.add_argument("--s_dir", "--save_dir", default=Path("/mnt/workspace/semi_supervised_CAG/logs/CAG/supervised/F2/400/resnest101"))
-    parser.add_argument("--t_txt_path", "--train_txt_path", default="/mnt/workspace/semi_supervised_CAG/ata/cag/labeled_400_2.txt")
-    parser.add_argument("--v_txt_path", "--valid_txt_path", default="/mnt/workspace/semi_supervised_CAG/data/cag/valid_2.txt")
-    
+    parser.add_argument("--s_dir", "--save_dir",
+                        default=Path("/mnt/workspace/semi_supervised_CAG/logs/CAG/supervised/F2/400/resnest101"))
+    parser.add_argument("--t_txt_path", "--train_txt_path",
+                        default="/mnt/workspace/semi_supervised_CAG/ata/cag/labeled_400_2.txt")
+    parser.add_argument("--v_txt_path", "--valid_txt_path",
+                        default="/mnt/workspace/semi_supervised_CAG/data/cag/valid_2.txt")
+
     # # parser.add_argument("--i_dir", "--img_dir", default=Path("./data/cag/imgs"))
     # # parser.add_argument("--l_dir", "--label_dir", default=Path("./data/cag/labels"))
     # parser.add_argument("--s_dir", "--save_dir", default=Path("./logs/CAG/F2/50/supervised/unet"))
@@ -286,7 +299,7 @@ if __name__ == "__main__":
     # parser.add_argument("--t_txt_path", "--train_txt_path", default="./data/cag/labeled_50_2.txt")
     # parser.add_argument("--v_txt_path", "--valid_txt_path", default="./data/cag/valid_2.txt")
  
-    parser.add_argument("--lr", "--learning_rate", default=1e-2)
+    parser.add_argument("--lr", "--learning_rate", default=1e-1)
     args = parser.parse_args()
     
     begin_time = datetime.now()
