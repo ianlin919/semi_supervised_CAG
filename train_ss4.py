@@ -19,7 +19,7 @@ from lightning.fabric.loggers import CSVLogger
 from networks import net_factory
 import segmentation_models_pytorch as smp
 ## Data & Augmentation
-from dataset import ImageDataSet_Train, ImageDataSet_Valid, ImageDataSet_semi2
+from dataset import ImageDataSet_Train, ImageDataSet_Valid, ImageDataSet4
 from transforms import get_train_augmentation
 from transforms.RandAugment import RandAugment_best_2aug
 ## Initial
@@ -255,12 +255,12 @@ def main(args):
     """
     Setup Dataset and Dataloader
     """
-    train_dataset = ImageDataSet_train(txt_path=args.t_txt_path,
+    train_dataset = ImageDataSet_Train(txt_path=args.t_txt_path,
                                   img_dir=args.i_dir,
                                   label_dir=args.l_dir,
                                   size=args.size,
                                   transform=get_train_augmentation())
-    valid_dataset = ImageDataSet_valid(txt_path=args.v_txt_path,
+    valid_dataset = ImageDataSet_Valid(txt_path=args.v_txt_path,
                                  img_dir=args.i_dir,
                                  label_dir=args.l_dir,
                                  size=args.size,
