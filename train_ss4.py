@@ -265,7 +265,7 @@ def main(args):
                                  label_dir=args.l_dir,
                                  size=args.size,
                                  sort=True)
-    train_dataset_u = ImageDataSet_semi2(labeled_txt_path=args.t_txt_path,
+    train_dataset_u = ImageDataSet4(labeled_txt_path=args.t_txt_path,
                                     un_txtPath=args.t_un_txt_path,
                                     img_dir=args.i_dir,
                                     size=args.size,
@@ -332,7 +332,7 @@ if __name__ == "__main__":
     parser.add_argument("--bu", "--batch_size_un", default=40, type=int)
     parser.add_argument("--e", "--Epoch", default=300, type=int)
     parser.add_argument("--c", "--cpu_core", default=4, type=int)
-    parser.add_argument("--g", "--gpu", default=2, type=int)
+    parser.add_argument("--g", "--gpu", default=0, type=int)
     """
     CAG Dataset Labeled 500 and Unlabeled 8952
     Dataset split to train and valid : 400/100
