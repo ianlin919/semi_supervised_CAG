@@ -26,8 +26,8 @@ from transforms.RandAugment import RandAugment_best_2aug
 ssl._create_default_https_context = ssl._create_unverified_context
 
 def create_model(norm=True, ema=False):
-    # net = smp.Unet("efficientnet-b6", in_channels=1, classes=1)
-    net = net_factory('unet',1,1)  # 'unet','enet','pnet'
+    net = smp.Unet("efficientnet-b6", in_channels=1, classes=1)
+    # net = net_factory('unet',1,1)  # 'unet','enet','pnet'
     if norm:
         model = kaiming_normal_init_weight(net)
     else:
@@ -328,8 +328,8 @@ def main(args):
 if __name__ == "__main__":
     pl.seed_everything(1234)
     parser = ArgumentParser()
-    parser.add_argument("--bl", "--batch_size_labeled", default=4, type=int)
-    parser.add_argument("--bu", "--batch_size_un", default=10, type=int)
+    parser.add_argument("--bl", "--batch_size_labeled", default=10, type=int)
+    parser.add_argument("--bu", "--batch_size_un", default=40, type=int)
     parser.add_argument("--e", "--Epoch", default=300, type=int)
     parser.add_argument("--c", "--cpu_core", default=4, type=int)
     parser.add_argument("--g", "--gpu", default=2, type=int)
@@ -338,30 +338,30 @@ if __name__ == "__main__":
     Dataset split to train and valid : 400/100
     Image resize to (512,512)
     """
-    # parser.add_argument("--size", "--image_size", default=(512,512))
-    # parser.add_argument("--i_dir", "--img_dir", default=Path("./data/cag/imgs"))
-    # parser.add_argument("--l_dir", "--label_dir", default=Path("./data/cag/labels"))
-    # parser.add_argument("--s_dir", "--save_dir", default=Path("./logs/CAG/F2/20_500/S4_best")) #s_add_augment pseudoaug_ada
-    # parser.add_argument("--t_txt_path", "--train_txt_path", default="./data/cag/labeled_400_2.txt")
-    # parser.add_argument("--t_un_txt_path", "--train_un_txt_path", default="./data/cag/unlabeled_all.txt")
-    # parser.add_argument("--v_txt_path", "--valid_txt_path", default="./data/cag/valid_2.txt")
+    parser.add_argument("--size", "--image_size", default=(512,512))
+    parser.add_argument("--i_dir", "--img_dir", default=Path("/mnt/workspace/CAG/imgs2"))
+    parser.add_argument("--l_dir", "--label_dir", default=Path("/mnt/workspace/CAG/labels2"))
+    parser.add_argument("--s_dir", "--save_dir", default=Path("./logs/CAG/F2/all/S4_best")) #s_add_augment pseudoaug_ada
+    parser.add_argument("--t_txt_path", "--train_txt_path", default="/mnt/workspace/semi_supervised_CAG/data/cag/labeled_400_2.txt")
+    parser.add_argument("--t_un_txt_path", "--train_un_txt_path", default="/mnt/workspace/semi_supervised_CAG/data/cag/unlabeled_all.txt")
+    parser.add_argument("--v_txt_path", "--valid_txt_path", default="/mnt/workspace/semi_supervised_CAG/data/cag/valid_2.txt")
     
-    # parser.add_argument("--t_txt_path", "--train_txt_path", default="./data/cag/labeled_20_2.txt")
-    # parser.add_argument("--t_un_txt_path", "--train_un_txt_path", default="./data/cag/un_500.txt")
-    # parser.add_argument("--v_txt_path", "--valid_txt_path", default="./data/cag/valid_2.txt")
+    # parser.add_argument("--t_txt_path", "--train_txt_path", default="/mnt/workspace/semi_supervised_CAG/data/cag/labeled_20_2.txt")
+    # parser.add_argument("--t_un_txt_path", "--train_un_txt_path", default="/mnt/workspace/semi_supervised_CAG/data/cag/un_500.txt")
+    # parser.add_argument("--v_txt_path", "--valid_txt_path", default="/mnt/workspace/semi_supervised_CAG/data/cag/valid_2.txt")
     """
     STARE Dataset Labeled 20 and Unlabeled 377
     Dataset split to train and valid : 18/2
     Image resize to (704,704)
     """
-    parser.add_argument("--size", "--image_size", default=(704,704))
-    parser.add_argument("--i_dir", "--img_dir", default=Path("./data/stare/original"))
-    parser.add_argument("--l_dir", "--label_dir", default=Path("./data/stare/label"))
-    parser.add_argument("--s_dir", "--save_dir", default=Path("./logs/STARE/F6/18_377/S4_best"))
-    parser.add_argument("--t_txt_path", "--train_txt_path", default="./data/stare/train6.txt")
-    parser.add_argument("--t_un_txt_path", "--train_un_txt_path", default="./data/stare/unlabeled.txt")
-    # parser.add_argument("--t_un_txt_path", "--train_un_txt_path", default="./data/stare/unlabeled_clean.txt")
-    parser.add_argument("--v_txt_path", "--valid_txt_path", default="./data/stare/val6.txt")
+    # parser.add_argument("--size", "--image_size", default=(704,704))
+    # parser.add_argument("--i_dir", "--img_dir", default=Path("./data/stare/original"))
+    # parser.add_argument("--l_dir", "--label_dir", default=Path("./data/stare/label"))
+    # parser.add_argument("--s_dir", "--save_dir", default=Path("./logs/STARE/F6/18_377/S4_best"))
+    # parser.add_argument("--t_txt_path", "--train_txt_path", default="./data/stare/train6.txt")
+    # parser.add_argument("--t_un_txt_path", "--train_un_txt_path", default="./data/stare/unlabeled.txt")
+    # # parser.add_argument("--t_un_txt_path", "--train_un_txt_path", default="./data/stare/unlabeled_clean.txt")
+    # parser.add_argument("--v_txt_path", "--valid_txt_path", default="./data/stare/val6.txt")
     """
     DCA1 Dataset Labeled 134
     Dataset split to train and valid : 100/34
@@ -375,7 +375,7 @@ if __name__ == "__main__":
     # parser.add_argument("--t_un_txt_path", "--train_un_txt_path", default="./data/DCA1/DCA1_train_u_90.txt") # DCA1_train_u_95 DCA1_train_u_90 
     # parser.add_argument("--v_txt_path", "--valid_txt_path", default="./data/DCA1/DCA1_val_34.txt")
     
-    parser.add_argument("--lr", "--learning_rate", default=1e-3)
+    parser.add_argument("--lr", "--learning_rate", default=1e-1)
     # parser.add_argument("--l2", "--weight_decay", default=1e-4)
     args = parser.parse_args()
     

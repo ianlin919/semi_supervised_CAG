@@ -197,7 +197,7 @@ def main(args):
     train_history = createTrainHistory(["loss", "SE", "SP", "PR", "F1"])
     csv_logger = CSVLogger(root_dir=args.s_dir)
     fabric = Fabric(accelerator="gpu",
-                    device=torch.device("cuda"),
+                    device=[args.g],
                     precision="16-mixed",
                     loggers=csv_logger)
     fabric.launch()
@@ -311,7 +311,7 @@ if __name__ == "__main__":
     parser.add_argument("--bu", "--batch_size_un", default=10, type=int)
     parser.add_argument("--e", "--Epoch", default=300, type=int)
     parser.add_argument("--c", "--cpu_core", default=4, type=int)
-    parser.add_argument("--g", "--gpu", default=2, type=int)
+    parser.add_argument("--g", "--gpu", default=0, type=int)
     """
     CAG Dataset Labeled 500 and Unlabeled 8952
     Dataset split to train and valid : 400/100

@@ -157,7 +157,7 @@ def main(args):
     train_history = createTrainHistory(["loss", "SE", "SP", "PR", "F1"])
     csv_logger = CSVLogger(root_dir=args.s_dir)
     fabric = Fabric(accelerator="gpu", 
-                    devices=[args.g],
+                    devices=0,
                     precision="16-mixed",
                     loggers=csv_logger)
     fabric.launch()
