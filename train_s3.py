@@ -236,14 +236,7 @@ def main(args):
         label_dir=args.l_dir,
         size=args.size,
         sort=True)
-    train_dataset_u = ImageDataSet_Semi2(
-        # labeled_texPath=args.t_txt_path,
-        un_txtPath=args.t_un_txt_path,
-        img_dir=args.i_dir,
-        size=args.size,
-        transform=RandAugment_best_2aug(1, 20),
-        transform_weak=weak_aug()
-    )
+1
     train_loader = DataLoader(
         dataset=train_dataset,
         batch_size=args.bl,

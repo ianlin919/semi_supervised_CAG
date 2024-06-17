@@ -28,7 +28,7 @@ ssl._create_default_https_context = ssl._create_unverified_context
 def create_model(norm=True, ema=False):
     net = smp.Unet("efficientnet-b6", in_channels=1, classes=1)
     # net = net_factory('unet',1,1)  # 'unet','enet','pnet'
-    if norm:
+    if norm:s
         model = kaiming_normal_init_weight(net)
     else:
         model = net
