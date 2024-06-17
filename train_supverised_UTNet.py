@@ -20,7 +20,7 @@ from networks import net_factory
 from networks.utnet import UTNet
 import segmentation_models_pytorch as smp
 ## Data & Augmentation
-from dataset import ImageDataSet_Train, ImageDataSet_Valid,ImageDataSet_supervised_aug
+from dataset import ImageDataSet_Train, ImageDataSet_Valid
 from transforms import get_train_augmentation, get_train_simple
 from transforms.RandAugment import RandAugment_best_2aug_with_ori_img
 ## Initial
@@ -275,12 +275,14 @@ if __name__ == "__main__":
     Image resize to (512,512)
     """
     parser.add_argument("--size", "--image_size", default=(512, 512))
-    parser.add_argument("--i_dir", "--img_dir", default=Path("/home/ryan0208/python/semi/data/cag/imgs2"))
-    parser.add_argument("--l_dir", "--label_dir", default=Path("/home/ryan0208/python/semi/data/cag/labels2"))
-    parser.add_argument("--s_dir", "--save_dir", default=Path("./logs/CAG/supervised/F2/400/UTNet_64patches_bs10"))
+    parser.add_argument("--i_dir", "--img_dir", default=Path("/mnt/workspace/CAG/imgs2"))
+    parser.add_argument("--l_dir", "--label_dir", default=Path("/mnt/workspace/CAG/labels2"))
+    parser.add_argument("--s_dir", "--save_dir",
+                        default=Path("/mnt/workspace/semi_supervised_CAG/logs/CAG/supervised/F2/400/utnet_64ps_10bs"))
     parser.add_argument("--t_txt_path", "--train_txt_path",
-                        default="/home/ryan0208/python/semi/data/cag/labeled_400_2.txt")
-    parser.add_argument("--v_txt_path", "--valid_txt_path", default="/home/ryan0208/python/semi/data/cag/valid_2.txt")
+                        default="/mnt/workspace/semi_supervised_CAG/ata/cag/labeled_400_2.txt")
+    parser.add_argument("--v_txt_path", "--valid_txt_path",
+                        default="/mnt/workspace/semi_supervised_CAG/data/cag/valid_2.txt")
     
     # # parser.add_argument("--i_dir", "--img_dir", default=Path("./data/cag/imgs"))
     # # parser.add_argument("--l_dir", "--label_dir", default=Path("./data/cag/labels"))
